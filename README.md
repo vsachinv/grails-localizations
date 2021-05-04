@@ -14,7 +14,8 @@ Add dependency to your build.gradle for > Grails 3.2.x:
 ```
 repositories {
   ...
-  maven { url "http://dl.bintray.com/sachinverma/plugins" }
+  // maven { url "http://dl.bintray.com/sachinverma/plugins" } remove this as Bintray repo Services down now.
+  maven { url "https://softclinic.jfrog.io/artifactory/grails-plugins-release" }
 }
 
 dependencies {
