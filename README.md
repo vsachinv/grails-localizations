@@ -15,11 +15,13 @@ Add dependency to your build.gradle for > Grails 3.2.x:
 repositories {
   ...
   // maven { url "http://dl.bintray.com/sachinverma/plugins" } remove this as Bintray repo Services down now.
-  maven { url "https://softclinic.jfrog.io/artifactory/grails-plugins-release" }
+//  maven { url "https://softclinic.jfrog.io/artifactory/grails-plugins-release" }
+  maven { url "https://jitpack.io" }
 }
 
 dependencies {
-    compile 'org.grails.plugins:grails-localizations:0.1.3'
+    //compile 'org.grails.plugins:grails-localizations:0.1.3'
+    compile 'com.github.vsachinv:grails-localizations:0.1.3'
 }
 ```
 
