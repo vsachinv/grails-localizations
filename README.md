@@ -9,6 +9,19 @@ database the first time a message is requested after the plugin is installed.
 
 ##Installation
 
+Add dependency to your build.gradle for > Grails 4.x:
+
+```
+repositories {
+  ...
+  maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    compile 'com.github.vsachinv:grails-localizations:4.0-M1'
+}
+```
+
 Add dependency to your build.gradle for > Grails 3.2.x:
 
 ```
@@ -24,6 +37,7 @@ dependencies {
     compile 'com.github.vsachinv:grails-localizations:0.1.3'
 }
 ```
+Source Code for Grails 3.x: https://github.com/vsachinv/grails-localizations/tree/grails3-upgrade
 
 
 Add dependency to your BuildConfig.groovy for Grails 2.x:
