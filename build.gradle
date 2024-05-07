@@ -5,20 +5,19 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.8.2"
-        classpath "com.gorylenko.gradle-git-properties:com.gorylenko.gradle-git-properties.gradle.plugin:1.5.2"
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.0.10"
+        classpath "gradle.plugin.com.gorylenko.gradle-git-properties:gradle-git-properties:2.2.3"
     }
 }
 
-version "0.1.3"
+version "4.0-M1"
 group "org.grails.plugins"
 
 apply plugin: "eclipse"
 apply plugin: "idea"
 apply plugin: "org.grails.grails-plugin"
-apply plugin: "org.grails.grails-plugin-publish"
-apply plugin: "org.grails.grails-gsp"
 apply plugin: "asset-pipeline"
+apply plugin: "org.grails.grails-gsp"
 apply plugin: "com.gorylenko.gradle-git-properties"
 apply plugin: 'maven-publish'
 
@@ -27,19 +26,34 @@ repositories {
     maven { url "https://repo.grails.org/grails/core" }
 }
 
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+}
+
 dependencies {
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
     compile "org.springframework.boot:spring-boot-starter-logging"
     compile "org.springframework.boot:spring-boot-autoconfigure"
     compile "org.grails:grails-core"
-    compile "org.springframework.boot:spring-boot-starter-actuator"
     compile "org.springframework.boot:spring-boot-starter-tomcat"
-    compile "org.grails:grails-dependencies"
     compile "org.grails:grails-web-boot"
-    compile "org.grails.plugins:cache"
+    compile "org.grails:grails-logging"
+    compile "org.grails:grails-plugin-databinding"
+    compile "org.grails:grails-plugin-i18n"
+    compile "org.grails:grails-plugin-services"
+    compile "org.grails:grails-plugin-url-mappings"
+    compile "org.grails.plugins:gsp"
+    compile "org.grails.plugins:converters:4.0.1"
+    compileOnly "io.micronaut:micronaut-inject-groovy"
     profile "org.grails.profiles:web-plugin"
-    provided "org.grails:grails-plugin-services"
-    provided "org.grails:grails-plugin-domain-class"
-    runtime "com.bertramlabs.plugins:asset-pipeline-grails:2.8.2"
+    runtime "com.bertramlabs.plugins:asset-pipeline-grails:3.0.10"
+    testCompile "io.micronaut:micronaut-inject-groovy"
+    testCompile "org.grails:grails-gorm-testing-support"
+    testCompile "org.mockito:mockito-core"
+    testCompile "org.grails:grails-web-testing-support"
 }
 
 gitProperties {
@@ -48,7 +62,9 @@ gitProperties {
     extProperty = 'gitProps' // git properties will be put in a map at project.ext.gitProps
 }
 
-generateGitProperties.outputs.upToDateWhen { false } // make sure the generateGitProperties task always executes (even when git.properties is not changed)
+generateGitProperties.outputs.upToDateWhen {
+    false
+} // make sure the generateGitProperties task always executes (even when git.properties is not changed)
 
 jar {
     dependsOn generateGitProperties
@@ -63,7 +79,6 @@ jar {
     from sourceSets.main.output
     exclude 'git.properties'
 }
-
 
 task sourceJar(type: Jar) {
     classifier = 'sources'
@@ -80,77 +95,41 @@ task packageGroovydoc(type: Jar) {
     classifier = 'groovydoc'
 }
 
-
 bootRun {
-    jvmArgs('-Dspring.output.ansi.enabled=always')
-    addResources = true
+    ignoreExitValue true
+    jvmArgs(
+            '-Dspring.output.ansi.enabled=always',
+            '-noverify',
+            '-XX:TieredStopAtLevel=1',
+            '-Xmx1024m')
+    sourceResources sourceSets.main
+    String springProfilesActive = 'spring.profiles.active'
+    systemProperty springProfilesActive, System.getProperty(springProfilesActive)
+}
+
+tasks.withType(GroovyCompile) {
+    configure(groovyOptions) {
+        forkOptions.jvmArgs = ['-Xmx1024m']
+    }
 }
 // enable if you wish to package this plugin as a standalone application
-bootRepackage.enabled = false
-grailsPublish {
-    githubSlug = 'halfbaked/grails-localizations'
-    license {
-        name = 'Apache-2.0'
-    }
-    title = "Localizations (messages) plugin"
-    desc = '''This plugin will pull i18n definitions from the database rather than from the standard properties files in the i18n folder for Grails 3 applications.
-
-It will do the following:
-* Create a domain class and corresponding table called Localization
-* Prepopulate the table with all the message properties it finds in the i18n folder
-* Ensure Grails writes i18n messages based on what it finds in the database rather than the 118n folder
-
-In addtion the plugin also has these added features to help you:
-* A CRUD UI to add, delete, and update i18n messages
-* A cache for increased speed 
-* A JSONP action which can be useful in client-side templating.
-
-Asumptions:
-* Your database supports unicode
-* Your application has a layout called main
-'''
-    developers = [sachinverma: "Sachin Verma", halfbaked: "Eamonn O'Connell"]
-}
-
-bintray {
-    pkg {
-        name = "$project.name"
-        issueTrackerUrl = "https://github.com/halfbaked/$project.name/issues"
-        vcsUrl = "https://github.com/halfbaked/$project.name"
-        version {
-            attributes = ['grails-plugin': "$project.group:$project.name"]
-            name = project.version
-        }
-    }
-}
-
+bootJar.enabled = false
 
 assets {
     packagePlugin = true
 }
 
 publishing {
-    publications {
-        gpr(MavenPublication) {
-            pom.withXml {
-                def pomNode = asNode()
-                pomNode.dependencyManagement.replaceNode {}
 
-                // simply remove dependencies without a version
-                // version-less dependencies are handled with dependencyManagement
-                // see https://github.com/spring-gradle-plugins/dependency-management-plugin/issues/8 for more complete solutions
-                pomNode.dependencies.dependency.findAll {
-                    it.version.text().isEmpty()
-                }.each {
-                    it.replaceNode {}
-                }
-            }
+    publications {
+        mavenJar(MavenPublication) {
             from components.java
             artifact sourceJar
             artifact packageJavadoc
             artifact packageGroovydoc
         }
     }
+
     repositories {
         maven {
             name = "GitHubPackages"
@@ -160,5 +139,14 @@ publishing {
                 password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
             }
         }
+        maven {
+            name = "NexusRepo"
+            credentials {
+                username project.findProperty("nexusUsername") ?: System.getenv("NEXUS_USERNAME")
+                password project.findProperty("nexusPassword") ?: System.getenv("NEXUS_PASSWORD")
+            }
+            url project.findProperty("nexusUrl") ?: System.getenv("NEXUS_URL")
+        }
+
     }
 }

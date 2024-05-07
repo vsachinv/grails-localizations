@@ -1,5 +1,6 @@
 package org.grails.plugins.localization;
 
+import groovy.transform.CompileStatic;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.support.AbstractMessageSource;
 import org.springframework.core.io.ResourceLoader;
@@ -7,6 +8,7 @@ import org.springframework.core.io.ResourceLoader;
 import java.text.MessageFormat;
 import java.util.Locale;
 
+@CompileStatic
 public class LocalizationMessageSource extends AbstractMessageSource implements ResourceLoaderAware {
 
     private ResourceLoader resourceLoader = null;

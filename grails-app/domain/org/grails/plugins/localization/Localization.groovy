@@ -1,10 +1,13 @@
 package org.grails.plugins.localization
 
 import grails.localizations.LocalizationsPluginUtils
-import grails.util.GrailsWebUtil
+import grails.util.GrailsWebMockUtil
 import grails.util.Holders
 import grails.web.context.ServletContextHolder
+import groovy.transform.CompileStatic
 import org.springframework.core.io.Resource
+import org.springframework.web.context.WebApplicationContext
+import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.support.WebApplicationContextUtils
 import org.springframework.web.servlet.support.RequestContextUtils
@@ -12,7 +15,7 @@ import org.springframework.web.servlet.support.RequestContextUtils
 
 class Localization implements Serializable {
 
-    private static cache = new LinkedHashMap((int) 16, (float) 0.75, (boolean) true)
+    private static final Map cache = new LinkedHashMap((int) 16, (float) 0.75, (boolean) true)
     private static long maxCacheSize = 128L * 1024L // Cache size in KB (default is 128kb)
     private static long currentCacheSize = 0L
     private static final missingValue = "\b" // an impossible value signifying that no such code exists in the database
@@ -44,7 +47,7 @@ class Localization implements Serializable {
         text(blank: true, size: 0..2000)
     }
 
-    def localeAsObj() {
+    Locale localeAsObj() {
         switch (locale.size()) {
             case 4:
                 return new Locale(locale[0..1], locale[2..3])
@@ -57,7 +60,7 @@ class Localization implements Serializable {
 
     static String decodeMessage(String code, Locale locale) {
 
-        def key = code + keyDelimiter + locale.getLanguage() + locale.getCountry()
+        String key = code + keyDelimiter + locale.getLanguage() + locale.getCountry()
         def msg
         if (maxCacheSize > 0) {
             synchronized (cache) {
@@ -72,8 +75,8 @@ class Localization implements Serializable {
 
         if (!msg) {
             Localization.withNewSession {
-                def lst = Localization.findAll(
-                        "from org.grails.plugins.localization.Localization as x where x.code = ? and x.locale in ('*', ?, ?) order by x.relevance desc",
+                List<Localization> lst = Localization.findAll(
+                        "from org.grails.plugins.localization.Localization as x where x.code = ?0 and x.locale in ('*', ?1, ?2) order by x.relevance desc",
                         [code, locale.getLanguage(), locale.getLanguage() + locale.getCountry()])
                 msg = lst.size() > 0 ? lst[0].text : missingValue
             }
@@ -107,14 +110,14 @@ class Localization implements Serializable {
         return (msg == missingValue) ? null : msg
     }
 
-    static getMessage(parameters) {
-        def requestAttributes = RequestContextHolder.getRequestAttributes()
-        def applicationContext = WebApplicationContextUtils.getRequiredWebApplicationContext(ServletContextHolder.getServletContext())
+    static String getMessage(Map parameters) {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes()
+        WebApplicationContext applicationContext = WebApplicationContextUtils.getRequiredWebApplicationContext(ServletContextHolder.getServletContext())
         boolean unbindRequest = false
 
         // Outside of an executing request, establish a mock version
         if (!requestAttributes) {
-            requestAttributes = GrailsWebUtil.bindMockWebRequest(applicationContext)
+            requestAttributes = GrailsWebMockUtil.bindMockWebRequest(applicationContext)
             unbindRequest = true
         }
 
@@ -129,11 +132,11 @@ class Localization implements Serializable {
             if (locale.length() >= 5) {
                 locale = new Locale(locale[0..1], locale[3..4])
             } else {
-                locale = new Locale(locale)
+                locale = new Locale(locale as String)
             }
         }
 
-        def msg = messageSource.getMessage(parameters.code, parameters.args as Object[], parameters.default, locale)
+        String msg = messageSource.getMessage(parameters.code as String, parameters.args as Object[], parameters.default as String, locale)
 
         if (unbindRequest) RequestContextHolder.setRequestAttributes(null)
         if (parameters.encodeAs) {
@@ -175,6 +178,7 @@ class Localization implements Serializable {
     }
 
     // Repopulates the org.grails.plugins.localization table from the i18n property files
+    @CompileStatic
     static reload() {
         Localization.executeUpdate("delete Localization")
         load()
@@ -187,6 +191,7 @@ class Localization implements Serializable {
         resetAll()
     }
 
+    @CompileStatic
     static load() {
         List<Resource> propertiesResources = []
         LocalizationsPluginUtils.i18nResources?.each {
@@ -203,28 +208,29 @@ class Localization implements Serializable {
             def locale = getLocaleForFileName(it.filename)
             Localization.loadPropertyFile(new InputStreamReader(it.inputStream, "UTF-8"), locale)
         }
-        def size = Holders.config.localizations.cache.size.kb
-        if (size != null && size instanceof Integer && size >= 0 && size <= 1024 * 1024) {
+        Integer size = Holders.config.getProperty('localizations.cache.size.kb', Integer)
+        if (size != null && size >= 0 && size <= 1024 * 1024) {
             maxCacheSize = size * 1024L
         }
     }
 
-    static loadPropertyFile(InputStreamReader inputStreamReader, locale) {
-        def loc = locale ? locale.getLanguage() + locale.getCountry() : "*"
-        def props = new Properties()
-        def reader = new BufferedReader(inputStreamReader)
+    static Map loadPropertyFile(InputStreamReader inputStreamReader, locale) {
+        String loc = locale ? locale.getLanguage() + locale.getCountry() : "*"
+        Properties props = new Properties()
+        Reader reader = new BufferedReader(inputStreamReader)
         try {
             props.load(reader)
         } finally {
             if (reader) reader.close()
         }
 
-        def rec, txt
-        def counts = [imported: 0, skipped: 0]
+        Localization rec = null
+        String txt = null
+        Map<String, Integer> counts = [imported: 0, skipped: 0]
         Localization.withSession { session ->
             props.stringPropertyNames().each { key ->
-                rec = Localization.findByCodeAndLocale(key, loc)
-                if (!rec) {
+                Boolean exist = !!Localization.countByCodeAndLocale(key, loc)
+                if (!exist) {
                     txt = props.getProperty(key)
                     rec = new Localization([code: key, locale: loc, text: txt])
                     if (rec.validate()) {
@@ -238,7 +244,7 @@ class Localization implements Serializable {
                 }
             }
             // Clear the whole cache if we actually imported any new keys
-            if (counts.imported > 0){
+            if (counts.imported > 0) {
                 Localization.resetAll()
                 session.flush()
             }
@@ -246,19 +252,19 @@ class Localization implements Serializable {
         return counts
     }
 
-    static getLocaleForFileName(String fileName) {
-        def locale = null
-
+    @CompileStatic
+    static Locale getLocaleForFileName(String fileName) {
+        Locale locale = null
         if (fileName ==~ /.+_[a-z][a-z]_[A-Z][A-Z]\.properties$/) {
             locale = new Locale(fileName.substring(fileName.length() - 16, fileName.length() - 14), fileName.substring(fileName.length() - 13, fileName.length() - 11))
         } else if (fileName ==~ /.+_[a-z][a-z]\.properties$/) {
             locale = new Locale(fileName.substring(fileName.length() - 13, fileName.length() - 11))
         }
-
-        locale
+        return locale
     }
 
-    static resetAll() {
+    @CompileStatic
+    static void resetAll() {
         synchronized (cache) {
             cache.clear()
             currentCacheSize = 0L
@@ -267,7 +273,7 @@ class Localization implements Serializable {
         }
     }
 
-    static resetThis(String key) {
+    static void resetThis(String key) {
         key += keyDelimiter
         synchronized (cache) {
             def entries = cache.entrySet().iterator()
@@ -282,8 +288,8 @@ class Localization implements Serializable {
         }
     }
 
-    static statistics() {
-        def stats = [:]
+    static Map statistics() {
+        Map stats = [:]
         synchronized (cache) {
             stats.max = maxCacheSize
             stats.size = currentCacheSize
@@ -291,13 +297,12 @@ class Localization implements Serializable {
             stats.hits = cacheHits
             stats.misses = cacheMisses
         }
-
         return stats
     }
 
-    static Object search(params) {
-        def expr = "%${params.q}%".toString().toLowerCase()
-        Localization.createCriteria().list(limit: params.max, order: params.order, sort: params.sort) {
+    static List<Localization> search(Map params) {
+        String expr = "%${params.q}%".toString().toLowerCase()
+        return Localization.createCriteria().list(limit: params.max, order: params.order, sort: params.sort) {
             if (params.locale) {
                 eq 'locale', params.locale
             }

@@ -5,6 +5,7 @@ import grails.core.GrailsApplicationClass
 import grails.util.BuildSettings
 import grails.util.Environment
 import grails.util.Holders
+import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.grails.core.io.StaticResourceLoader
 import org.grails.core.support.internal.tools.ClassRelativeResourcePatternResolver
@@ -20,7 +21,8 @@ class LocalizationsPluginUtils {
     static final String GRAILS_APP_I18N_PATH_COMPONENT = "/grails-app/i18n/";
     static String messageBundleLocationPattern = "classpath*:*.properties";
 
-    static List<Resource> getI18nResources() {
+    @CompileStatic
+    static Resource[] getI18nResources() {
         Resource[] resources = []
         if (Environment.isDevelopmentEnvironmentAvailable()) {
             File[] propertiesFiles = new File(BuildSettings.BASE_DIR, GRAILS_APP_I18N_PATH_COMPONENT).listFiles(new FilenameFilter() {
@@ -32,7 +34,7 @@ class LocalizationsPluginUtils {
             if (propertiesFiles != null && propertiesFiles.length > 0) {
                 List<Resource> resourceList = new ArrayList<Resource>(propertiesFiles.length);
                 for (File propertiesFile : propertiesFiles) {
-                    log.debug "Project - "+ propertiesFile.name
+                    log.debug "Project - " + propertiesFile.name
                     resourceList.add(new FileSystemResource(propertiesFile));
                 }
                 resources = resourceList.toArray(new Resource[resourceList.size()]);
@@ -54,13 +56,14 @@ class LocalizationsPluginUtils {
         }.reverse()
     }
 
+    @CompileStatic
     static List<Resource> getAllPluginI18nResources() {
         List<Resource> resources = []
         Holders.pluginManager.allPlugins.each {
             if (it instanceof BinaryGrailsPlugin) {
-                List<Resource> pluginResources = getPluginI18nResources(it)
+                Resource[] pluginResources = getPluginI18nResources(it)
                 if (pluginResources) {
-                    log.debug "Plugin - "+ it.name
+                    log.debug "Plugin - " + it.name
                     resources.addAll(pluginResources)
                 }
             }
@@ -72,7 +75,7 @@ class LocalizationsPluginUtils {
 
     }
 
-    static List<Resource> getPluginI18nResources(BinaryGrailsPlugin plugin) {
+    static Resource[] getPluginI18nResources(BinaryGrailsPlugin plugin) {
         Resource url = plugin.baseResourcesResource;
         if (url != null) {
             StaticResourceLoader resourceLoader = new StaticResourceLoader();

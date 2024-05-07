@@ -1,7 +1,7 @@
 package org.grails.plugins.localization
 
 import grails.converters.JSON
-import grails.transaction.Transactional
+import grails.gorm.transactions.Transactional
 import org.springframework.context.i18n.LocaleContextHolder
 
 class LocalizationController {
@@ -17,8 +17,8 @@ class LocalizationController {
         // them in this list!
         message(code: "home", default: "Home")
 
-        def max = 50
-        def dflt = 20
+        Integer max = 50
+        Integer dflt = 20
 
         // If the settings plugin is available, try and use it for pagination
         if (localizationService.hasPlugin("settings")) {
@@ -36,7 +36,7 @@ class LocalizationController {
         params.max = (params.max && params.max.toInteger() > 0) ? Math.min(params.max.toInteger(), max) : dflt
         params.sort = params.sort ?: "code"
 
-        def lst
+        List<Localization> lst
         if (localizationService.hasPlugin("criteria") || localizationService.hasPlugin("drilldowns")) {
             lst = Localization.selectList(session, params)
         } else {
@@ -54,7 +54,7 @@ class LocalizationController {
         params.max = (params.max && params.max.toInteger() > 0) ? Math.min(params.max.toInteger(), 50) : 20
         params.order = params.order ? params.order : (params.sort ? 'desc' : 'asc')
         params.sort = params.sort ?: "code"
-        def lst = Localization.search(params)
+        List<Localization> lst = Localization.search(params)
         render(view: 'index', model: [
                 localizationList     : lst,
                 localizationListCount: lst.size(),
@@ -88,9 +88,9 @@ class LocalizationController {
 
     @Transactional
     def update() {
-        def localization = Localization.get(params.id)
+        Localization localization = Localization.get(params.id)
         if (localization) {
-            def oldCode = localization.code
+            String oldCode = localization.code
             localization.properties = params
             if (!localization.hasErrors() && localization.save()) {
                 Localization.resetThis(oldCode)
@@ -111,14 +111,14 @@ class LocalizationController {
     }
 
     def create() {
-        def localization = new Localization()
+        Localization localization = new Localization()
         localization.properties = params
         return ['localization': localization]
     }
 
     @Transactional
     def save() {
-        def localization = new Localization(params)
+        Localization localization = new Localization(params)
         if (!localization.hasErrors() && localization.save()) {
             Localization.resetThis(localization.code)
             flash.message = "localization.created"
@@ -146,10 +146,10 @@ class LocalizationController {
         // the property files here.
         message(code: "home", default: "Home")
 
-        def names = []
-        def path = servletContext.getRealPath("/")
+        List<String> names = []
+        String path = servletContext.getRealPath("/")
         if (path) {
-            def dir = new File(new File(path).getParent(), "grails-app${File.separator}i18n")
+            File dir = new File(new File(path).getParent(), "grails-app${File.separator}i18n")
             if (dir.exists() && dir.canRead()) {
                 def name
                 dir.listFiles().each {
@@ -167,18 +167,18 @@ class LocalizationController {
 
     @Transactional
     def load() {
-        def name = params.file
+        String name = params.file
         if (name) {
             name += ".properties"
-            def path = servletContext.getRealPath("/")
+            String path = servletContext.getRealPath("/")
             if (path) {
-                def dir = new File(new File(path).getParent(), "grails-app${File.separator}i18n")
+                File dir = new File(new File(path).getParent(), "grails-app${File.separator}i18n")
                 if (dir.exists() && dir.canRead()) {
-                    def file = new File(dir, name)
+                    File file = new File(dir, name)
                     if (file.isFile() && file.canRead()) {
-                        def locale = Localization.getLocaleForFileName(name)
+                        Locale locale = Localization.getLocaleForFileName(name)
 
-                        def counts = Localization.loadPropertyFile(new InputStreamReader(new FileInputStream(file), "UTF-8"), locale)
+                        Map counts = Localization.loadPropertyFile(new InputStreamReader(new FileInputStream(file), "UTF-8"), locale)
                         flash.message = "localization.imports.counts"
                         flash.args = [counts.imported, counts.skipped]
                         flash.defaultMessage = "Imported ${counts.imported} key(s). Skipped ${counts.skipped} key(s)."
@@ -209,9 +209,9 @@ class LocalizationController {
     // It is possible to limit the messages returned by providing a codeBeginsWith parameter
     // Currently, there is no caching. Will have to add. 
     def jsonp = {
-        def currentLocale = LocaleContextHolder.getLocale() //.toString.replaceAll('_','')
-        def padding = params.padding ?: 'messages' //JSONP
-        def localizations = Localization.createCriteria().list {
+        Locale currentLocale = LocaleContextHolder.getLocale() //.toString.replaceAll('_','')
+        String padding = params.padding ?: 'messages' //JSONP
+        List<Localization> localizations = Localization.createCriteria().list {
             if (params.codeBeginsWith) ilike "code", "${params.codeBeginsWith}%"
             or {
                 eq "locale", "*"
@@ -220,7 +220,7 @@ class LocalizationController {
             }
             order("locale")
         }
-        def localizationsMap = [:]
+        Map<String, String> localizationsMap = [:]
         localizations.each {
             // if there are duplicate codes found, as the results are ordered by locale, the more specific should overwrite the less specific
             localizationsMap[it.code] = it.text
@@ -229,7 +229,7 @@ class LocalizationController {
     }
 
     private def withLocalization(id = "id", Closure c) {
-        def localization = Localization.get(params[id])
+        Localization localization = Localization.get(params[id])
         if (localization) {
             c.call localization
         } else {

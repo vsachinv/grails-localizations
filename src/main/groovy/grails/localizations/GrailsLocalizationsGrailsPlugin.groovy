@@ -8,7 +8,7 @@ import org.grails.plugins.localization.LocalizationMessageSource
 class GrailsLocalizationsGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
-    def grailsVersion = "3.2.9 > *"
+    def grailsVersion = "4.1.4 > *"
     // resources that are excluded from plugin packaging
     def pluginExcludes = [
             "grails-app/views/error.gsp"
@@ -66,7 +66,7 @@ Asumptions:
 
     Closure doWithSpring() {
         { ->
-            if(Holders.config?.grails?.plugin?.localizations?.enabled){
+            if(Holders.config.getProperty('grails.plugin.localizations.enabled', Boolean, false)){
                 messageSource(LocalizationMessageSource)
             }
         }
