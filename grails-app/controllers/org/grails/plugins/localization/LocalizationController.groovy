@@ -62,6 +62,10 @@ class LocalizationController {
         ])
     }
 
+    def list() {
+        redirect(action: 'index')
+    }
+
     def show() {
         withLocalization { localization ->
             return [localization: localization]

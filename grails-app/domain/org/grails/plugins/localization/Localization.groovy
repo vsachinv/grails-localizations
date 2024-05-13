@@ -5,6 +5,7 @@ import grails.util.GrailsWebMockUtil
 import grails.util.Holders
 import grails.web.context.ServletContextHolder
 import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
 import org.springframework.core.io.Resource
 import org.springframework.web.context.WebApplicationContext
 import org.springframework.web.context.request.RequestAttributes
@@ -12,7 +13,7 @@ import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.support.WebApplicationContextUtils
 import org.springframework.web.servlet.support.RequestContextUtils
 
-
+@Slf4j
 class Localization implements Serializable {
 
     private static final Map cache = new LinkedHashMap((int) 16, (float) 0.75, (boolean) true)
@@ -30,7 +31,7 @@ class Localization implements Serializable {
     Date dateCreated
     Date lastUpdated
 
-    static mapping = Holders.config.grails.plugin.localizations.mapping ?: {
+    static mapping = Holders.config.getProperty('grails.plugin.localizations.mapping',Closure) ?: {
         columns {
             code index: "localizations_idx"
             locale column: "loc"
