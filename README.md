@@ -8,8 +8,38 @@ application (but not subdirectories of i18n) are automatically loaded in to the
 database the first time a message is requested after the plugin is installed.
 
 ##Installation
+Add dependency to your build.gradle for > Grails 6.x:
 
-Add dependency to your build.gradle for > Grails 5.x:
+```
+repositories {
+  ...
+  maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    compile 'com.github.vsachinv:grails-localizations:6.0-M1'
+}
+```
+
+In addition if you don't want to use jitpack.io then use following github package registry:
+
+```groovy
+repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/vsachinv/grails-localizations")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    
+```  
+
+
+
+Add dependency to your build.gradle for > Grails 5.x and < Grails 6.x:
 
 ```
 repositories {
@@ -38,7 +68,7 @@ repositories {
     
 ```    
 
-Add dependency to your build.gradle for > Grails 4.x:
+Add dependency to your build.gradle for > Grails 4.x and < Grails 5.x:
 
 ```
 repositories {
@@ -51,7 +81,7 @@ dependencies {
 }
 ```
 
-Add dependency to your build.gradle for > Grails 3.2.x:
+Add dependency to your build.gradle for > Grails 3.2.x and < Grails 4.x:
 
 ```
 repositories {
