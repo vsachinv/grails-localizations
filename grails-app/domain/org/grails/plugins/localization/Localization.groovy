@@ -1,6 +1,6 @@
 package org.grails.plugins.localization
 
-import grails.localizations.LocalizationsPluginUtils
+
 import grails.util.GrailsWebMockUtil
 import grails.util.Holders
 import grails.web.context.ServletContextHolder
@@ -167,7 +167,7 @@ class Localization implements Serializable {
         return msg
     }
 
-    static setError(domain, parameters) {
+    static String setError(domain, parameters) {
         def msg = Localization.getMessage(parameters)
         if (parameters.field) {
             domain.errors.rejectValue(parameters.field, null, msg)
@@ -180,20 +180,20 @@ class Localization implements Serializable {
 
     // Repopulates the org.grails.plugins.localization table from the i18n property files
     @CompileStatic
-    static reload() {
+    static void reload() {
         Localization.executeUpdate("delete Localization")
         load()
         resetAll()
     }
 
     // Leaves the existing data in the database table intact and pulls in newly messages in the property files not found in the database
-    static syncWithPropertyFiles() {
+    static void syncWithPropertyFiles() {
         load()
         resetAll()
     }
 
     @CompileStatic
-    static load() {
+    static void load() {
         List<Resource> propertiesResources = []
         LocalizationsPluginUtils.i18nResources?.each {
             propertiesResources << it

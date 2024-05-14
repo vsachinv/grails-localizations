@@ -1,4 +1,4 @@
-package grails.localizations
+package org.grails.plugins.localization
 
 import grails.core.DefaultGrailsApplication
 import grails.core.GrailsApplicationClass
