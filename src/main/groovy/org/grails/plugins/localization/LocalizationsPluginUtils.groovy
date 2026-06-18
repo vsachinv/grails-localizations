@@ -1,14 +1,11 @@
 package org.grails.plugins.localization
 
-import grails.core.DefaultGrailsApplication
-import grails.core.GrailsApplicationClass
 import grails.util.BuildSettings
 import grails.util.Environment
 import grails.util.Holders
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.grails.core.io.StaticResourceLoader
-import org.grails.core.support.internal.tools.ClassRelativeResourcePatternResolver
 import org.grails.plugins.BinaryGrailsPlugin
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -43,12 +40,10 @@ class LocalizationsPluginUtils {
                 resources = new Resource[0];
             }
         } else {
-            DefaultGrailsApplication defaultGrailsApplication = (DefaultGrailsApplication) Holders.grailsApplication;
-            GrailsApplicationClass applicationClass = defaultGrailsApplication.getApplicationClass();
-            if (applicationClass != null) {
-                ResourcePatternResolver resourcePatternResolver = new ClassRelativeResourcePatternResolver(applicationClass.getClass());
-                resources = resourcePatternResolver.getResources(messageBundleLocationPattern);
-            }
+            ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver(
+                Thread.currentThread().getContextClassLoader()
+            );
+            resources = resourcePatternResolver.getResources(messageBundleLocationPattern);
         }
         //Sort based on underscore tokens count as more underscores means more exact locale value
         return resources.sort { x, y ->

@@ -1,17 +1,11 @@
 package org.grails.plugins.localization
 
 
-import grails.util.GrailsWebMockUtil
 import grails.util.Holders
-import grails.web.context.ServletContextHolder
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.core.io.Resource
-import org.springframework.web.context.WebApplicationContext
-import org.springframework.web.context.request.RequestAttributes
-import org.springframework.web.context.request.RequestContextHolder
-import org.springframework.web.context.support.WebApplicationContextUtils
-import org.springframework.web.servlet.support.RequestContextUtils
 
 @Slf4j
 class Localization implements Serializable {
@@ -38,6 +32,14 @@ class Localization implements Serializable {
         }
     }
 
+    static namedQueries = {
+        forCodeAndLocale { String aCode, List<String> locales ->
+            eq 'code', aCode
+            inList 'locale', locales
+            order 'relevance', 'desc'
+        }
+    }
+
     static constraints = {
         code(blank: false, size: 1..250)
         locale(size: 1..4, unique: 'code', blank: false, matches: "\\*|([a-z][a-z]([A-Z][A-Z])?)")
@@ -45,7 +47,7 @@ class Localization implements Serializable {
             if (obj.locale) obj.relevance = obj.locale.length()
             return true
         })
-        text(blank: true, size: 0..2000)
+        text(blank: true, nullable: true, size: 0..2000)
     }
 
     Locale localeAsObj() {
@@ -76,9 +78,9 @@ class Localization implements Serializable {
 
         if (!msg) {
             Localization.withNewSession {
-                List<Localization> lst = Localization.findAll(
-                        "from org.grails.plugins.localization.Localization as x where x.code = ?0 and x.locale in ('*', ?1, ?2) order by x.relevance desc",
-                        [code, locale.getLanguage(), locale.getLanguage() + locale.getCountry()])
+                List<Localization> lst = Localization.forCodeAndLocale(
+                    code, ['*', locale.getLanguage(), locale.getLanguage() + locale.getCountry()]
+                ).list(max: 1)
                 msg = lst.size() > 0 ? lst[0].text : missingValue
             }
 
@@ -112,34 +114,12 @@ class Localization implements Serializable {
     }
 
     static String getMessage(Map parameters) {
-        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes()
-        WebApplicationContext applicationContext = WebApplicationContextUtils.getRequiredWebApplicationContext(ServletContextHolder.getServletContext())
-        boolean unbindRequest = false
-
-        // Outside of an executing request, establish a mock version
-        if (!requestAttributes) {
-            requestAttributes = GrailsWebMockUtil.bindMockWebRequest(applicationContext)
-            unbindRequest = true
-        }
-
-        def messageSource = applicationContext.getBean("messageSource")
-        def locale = RequestContextUtils.getLocale(requestAttributes.request)
-
-        // What the heck is going on here with RequestContextUtils.getLocale() returning a String?
-        // Beats the hell out of me, so just fix it!
-        if (locale instanceof String) {
-
-            // Now Javasoft have lost the plot and you can't easily get from a Locale.toString() back to a locale. Aaaargh!
-            if (locale.length() >= 5) {
-                locale = new Locale(locale[0..1], locale[3..4])
-            } else {
-                locale = new Locale(locale as String)
-            }
-        }
+        def messageSource = Holders.applicationContext.getBean("messageSource")
+        // Works in both web and non-web contexts; replaces Grails 6's GrailsWebMockUtil/RequestContextHolder approach (removed in Grails 7)
+        Locale locale = LocaleContextHolder.getLocale()
 
         String msg = messageSource.getMessage(parameters.code as String, parameters.args as Object[], parameters.default as String, locale)
 
-        if (unbindRequest) RequestContextHolder.setRequestAttributes(null)
         if (parameters.encodeAs) {
             switch (parameters.encodeAs.toLowerCase()) {
                 case 'html':
@@ -179,9 +159,8 @@ class Localization implements Serializable {
     }
 
     // Repopulates the org.grails.plugins.localization table from the i18n property files
-    @CompileStatic
     static void reload() {
-        Localization.executeUpdate("delete Localization")
+        Localization.executeUpdate("delete from Localization")
         load()
         resetAll()
     }

@@ -212,7 +212,7 @@ class LocalizationController {
     // returns localizations as jsonp. Useful for displaying text in client side templates.
     // It is possible to limit the messages returned by providing a codeBeginsWith parameter
     // Currently, there is no caching. Will have to add. 
-    def jsonp = {
+    def jsonp() {
         Locale currentLocale = LocaleContextHolder.getLocale() //.toString.replaceAll('_','')
         String padding = params.padding ?: 'messages' //JSONP
         List<Localization> localizations = Localization.createCriteria().list {
