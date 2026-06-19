@@ -221,6 +221,175 @@ http://myServer/myApp/localization/jsonp?padding=messages&codeBeginsWith=my.pref
 
 ---
 
+## REST API
+
+The plugin exposes a full REST API for managing localizations. This is useful for external UI
+integrations (e.g. an admin SPA) without using the built-in GSP views.
+
+### URL Mapping — required in the consuming app
+
+The plugin ships a default `UrlMappings.groovy` for use when the plugin is installed standalone,
+but **when installed inside an existing Grails application you must add the REST routes to your
+app's own `UrlMappings.groovy`**:
+
+```groovy
+// grails-app/controllers/UrlMappings.groovy (in your application)
+class UrlMappings {
+    static mappings = {
+
+        // ... your existing mappings ...
+
+        // Localization REST API
+        "/api/localizations"(resources: 'localization') {
+            "/search"(controller: 'localization', action: 'search')
+            "/cache"(controller: 'localization', action: 'cache', method: 'GET')
+            "/cache/reset"(controller: 'localization', action: 'reset', method: 'POST')
+        }
+    }
+}
+```
+
+> The `resources: 'localization'` declaration generates all seven RESTful routes automatically.
+> The nested entries add the plugin-specific `search`, `cache`, and `cache/reset` sub-routes.
+
+---
+
+### Endpoints
+
+All endpoints accept and return `application/json`. Send `Accept: application/json` (or
+`Content-Type: application/json` for write requests) to activate JSON mode. Omitting the header
+returns the standard HTML view instead.
+
+#### List localizations
+
+```
+GET /api/localizations
+```
+
+Query parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max`     | 20      | Page size (capped at 50) |
+| `offset`  | 0       | Zero-based record offset |
+| `sort`    | `code`  | Field to sort by (`code`, `locale`, `text`) |
+| `order`   | `asc`   | Sort direction (`asc` or `desc`) |
+
+Response:
+
+```json
+{
+  "data": [
+    { "id": 1, "code": "home.label", "locale": "*", "text": "Home" }
+  ],
+  "total": 248,
+  "max": 20,
+  "offset": 0,
+  "page": 1,
+  "totalPages": 13
+}
+```
+
+#### Get a single localization
+
+```
+GET /api/localizations/{id}
+```
+
+Response: the `Localization` object as JSON, or `404` if not found.
+
+#### Create a localization
+
+```
+POST /api/localizations
+Content-Type: application/json
+
+{ "code": "home.label", "locale": "fr", "text": "Accueil" }
+```
+
+Returns `201 Created` with the created object, or `422 Unprocessable Entity` with validation errors.
+
+#### Update a localization
+
+```
+PUT /api/localizations/{id}
+Content-Type: application/json
+
+{ "code": "home.label", "locale": "fr", "text": "Accueil modifié" }
+```
+
+`PATCH` is also accepted. Returns `200 OK` with the updated object, `422` on validation error,
+or `404` if not found.
+
+#### Delete a localization
+
+```
+DELETE /api/localizations/{id}
+```
+
+Returns `204 No Content` on success, `404` if not found.
+
+#### Search localizations
+
+```
+GET /api/localizations/search?q=home&locale=fr&sort=code&order=asc&max=20&offset=0
+```
+
+Query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `q`       | Substring match against `code` or `text` (case-insensitive) |
+| `locale`  | Filter by locale code (e.g. `fr`, `frFR`, `*`) |
+| `sort`    | Field to sort by |
+| `order`   | `asc` or `desc` |
+| `max` / `offset` | Pagination |
+
+Response: same paginated envelope as the list endpoint.
+
+#### Cache statistics
+
+```
+GET /api/localizations/cache
+```
+
+Response:
+
+```json
+{
+  "stats": {
+    "count": 42,
+    "hits": 1830,
+    "misses": 42,
+    "maxSizeKb": 128,
+    "currentSizeKb": 11
+  }
+}
+```
+
+#### Reset cache
+
+```
+POST /api/localizations/cache/reset
+```
+
+Returns `302` redirect to the cache stats page (HTML) or `200` (JSON).
+
+---
+
+### HTTP status codes summary
+
+| Status | Meaning |
+|--------|---------|
+| `200`  | Success (GET, PUT/PATCH) |
+| `201`  | Created (POST) |
+| `204`  | Deleted (DELETE) |
+| `404`  | Localization not found |
+| `405`  | Method not allowed |
+| `422`  | Validation failed — response body contains `errors` object |
+
+---
+
 ## Locale lookup order
 
 When resolving a message for locale `fr_FR`, the plugin queries for:
@@ -247,7 +416,7 @@ Requires Java 17+ and Gradle 8+.
 # Build the plugin jar
 ./gradlew assemble
 
-# Run tests (50 unit tests)
+# Run tests (51 unit tests)
 ./gradlew test
 
 # Run a single spec

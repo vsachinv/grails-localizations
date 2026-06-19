@@ -31,17 +31,37 @@ class LocalizationControllerSpec extends Specification
         m?.uniqLocales           != null
     }
 
+    void "index returns paginated JSON response"() {
+        given:
+        (1..5).each { new Localization(code: "key.${it}", locale: '*', text: "Value ${it}").save(flush: true) }
+        response.format = 'json'
+        params.max    = '2'
+        params.offset = '2'
+
+        when:
+        controller.index()
+
+        then:
+        response.json.total      == 5
+        response.json.max        == 2
+        response.json.offset     == 2
+        response.json.page       == 2
+        response.json.totalPages == 3
+        response.json.data.size() == 2
+    }
+
     // ── show ──────────────────────────────────────────────────────────────────
 
     void "show redirects to index when id not found"() {
         given:
         params.id = 9999
+        response.format = 'html'
 
         when:
         controller.show()
 
         then:
-        response.redirectedUrl ==~ /.*index.*/
+        response.redirectedUrl ==~ /.*localizations.*/
         flash.message == 'localization.not.found'
     }
 

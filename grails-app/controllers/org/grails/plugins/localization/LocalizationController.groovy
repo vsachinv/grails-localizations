@@ -5,8 +5,14 @@ import grails.gorm.transactions.Transactional
 import org.springframework.context.i18n.LocaleContextHolder
 
 class LocalizationController {
-    // the delete, save and update actions only accept POST requests
-    static allowedMethods = [delete: 'POST', save: 'POST', update: 'POST', reset: 'POST', load: 'POST']
+    // HTML forms use POST; REST clients use the appropriate HTTP verb
+    static allowedMethods = [
+        save  : ['POST'],
+        update: ['POST', 'PUT', 'PATCH'],
+        delete: ['POST', 'DELETE'],
+        reset : ['POST'],
+        load  : ['POST']
+    ]
 
     def localizationService
 
@@ -43,11 +49,27 @@ class LocalizationController {
             lst = Localization.list(params)
         }
 
-        [
-                localizationList     : lst,
-                localizationListCount: Localization.count(),
-                uniqLocales          : Localization.uniqLocales
-        ]
+        Integer total = Localization.count()
+        Integer offset = (params.offset?.toInteger() ?: 0)
+        Integer pageMax = params.max.toInteger()
+
+        withFormat {
+            html {[
+                    localizationList     : lst,
+                    localizationListCount: total,
+                    uniqLocales          : Localization.uniqLocales
+            ]}
+            json {
+                respond([
+                    data      : lst,
+                    total     : total,
+                    max       : pageMax,
+                    offset    : offset,
+                    page      : (offset / pageMax).toInteger() + 1,
+                    totalPages: (int) Math.ceil(total / pageMax)
+                ])
+            }
+        }
     }
 
     def search() {
@@ -55,11 +77,14 @@ class LocalizationController {
         params.order = params.order ? params.order : (params.sort ? 'desc' : 'asc')
         params.sort = params.sort ?: "code"
         List<Localization> lst = Localization.search(params)
-        render(view: 'index', model: [
-                localizationList     : lst,
-                localizationListCount: lst.size(),
-                uniqLocales          : Localization.uniqLocales
-        ])
+        withFormat {
+            html { render(view: 'index', model: [
+                    localizationList     : lst,
+                    localizationListCount: lst.size(),
+                    uniqLocales          : Localization.uniqLocales
+            ])}
+            json { respond lst }
+        }
     }
 
     def list() {
@@ -68,7 +93,10 @@ class LocalizationController {
 
     def show() {
         withLocalization { localization ->
-            return [localization: localization]
+            withFormat {
+                html { return [localization: localization] }
+                json { respond localization }
+            }
         }
     }
 
@@ -77,10 +105,15 @@ class LocalizationController {
         withLocalization { localization ->
             localization.delete()
             Localization.resetThis(localization.code)
-            flash.message = "localization.deleted"
-            flash.args = [params.id]
-            flash.defaultMessage = "Localization ${params.id} deleted"
-            redirect(action: 'index')
+            withFormat {
+                html {
+                    flash.message = "localization.deleted"
+                    flash.args = [params.id]
+                    flash.defaultMessage = "Localization ${params.id} deleted"
+                    redirect(action: 'index')
+                }
+                '*' { render status: 204 }
+            }
         }
     }
 
@@ -99,18 +132,31 @@ class LocalizationController {
             if (!localization.hasErrors() && localization.save()) {
                 Localization.resetThis(oldCode)
                 if (localization.code != oldCode) Localization.resetThis(localization.code)
-                flash.message = "localization.updated"
-                flash.args = [params.id]
-                flash.defaultMessage = "Localization ${params.id} updated"
-                redirect(action: 'show', id: localization.id)
+                withFormat {
+                    html {
+                        flash.message = "localization.updated"
+                        flash.args = [params.id]
+                        flash.defaultMessage = "Localization ${params.id} updated"
+                        redirect(action: 'show', id: localization.id)
+                    }
+                    json { respond localization }
+                }
             } else {
-                render(view: 'edit', model: [localization: localization])
+                withFormat {
+                    html { render(view: 'edit', model: [localization: localization]) }
+                    json { respond localization.errors, [status: 422] }
+                }
             }
         } else {
-            flash.message = "localization.not.found"
-            flash.args = [params.id]
-            flash.defaultMessage = "Localization not found with id ${params.id}"
-            redirect(action: 'edit', id: params.id)
+            withFormat {
+                html {
+                    flash.message = "localization.not.found"
+                    flash.args = [params.id]
+                    flash.defaultMessage = "Localization not found with id ${params.id}"
+                    redirect(action: 'edit', id: params.id)
+                }
+                json { render status: 404 }
+            }
         }
     }
 
@@ -125,12 +171,20 @@ class LocalizationController {
         Localization localization = new Localization(params)
         if (!localization.hasErrors() && localization.save()) {
             Localization.resetThis(localization.code)
-            flash.message = "localization.created"
-            flash.args = ["${localization.id}"]
-            flash.defaultMessage = "Localization ${localization.id} created"
-            redirect(action: 'show', id: localization.id)
+            withFormat {
+                html {
+                    flash.message = "localization.created"
+                    flash.args = ["${localization.id}"]
+                    flash.defaultMessage = "Localization ${localization.id} created"
+                    redirect(action: 'show', id: localization.id)
+                }
+                json { respond localization, [status: 201] }
+            }
         } else {
-            render(view: 'create', model: [localization: localization])
+            withFormat {
+                html { render(view: 'create', model: [localization: localization]) }
+                json { respond localization.errors, [status: 422] }
+            }
         }
     }
 
@@ -237,10 +291,15 @@ class LocalizationController {
         if (localization) {
             c.call localization
         } else {
-            flash.message = "localization.not.found"
-            flash.args = [params.id]
-            flash.defaultMessage = "Localization not found with id ${params.id}"
-            redirect(action: 'index')
+            withFormat {
+                html {
+                    flash.message = "localization.not.found"
+                    flash.args = [params.id]
+                    flash.defaultMessage = "Localization not found with id ${params.id}"
+                    redirect(action: 'index')
+                }
+                '*' { render status: 404 }
+            }
         }
     }
 
