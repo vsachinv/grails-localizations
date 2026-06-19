@@ -85,19 +85,20 @@ jar {
     exclude 'git.properties'
 }
 
-task sourceJar(type: Jar) {
+tasks.register('sourceJar', Jar) {
+    dependsOn tasks.named('generateGitProperties')
     archiveClassifier = 'sources'
     from sourceSets.main.allSource
 }
 
-task packageJavadoc(type: Jar) {
-    from javadoc
+tasks.register('packageJavadoc', Jar) {
     archiveClassifier = 'javadoc'
+    from javadoc
 }
 
-task packageGroovydoc(type: Jar) {
-    from groovydoc
+tasks.register('packageGroovydoc', Jar) {
     archiveClassifier = 'groovydoc'
+    from groovydoc
 }
 
 tasks.withType(Test).configureEach {
