@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Grails plugin that replaces Grails' default file-based i18n (`.properties` files) with database-backed internationalization. On first message request after install, all `i18n/*.properties` files are loaded into the `Localization` table. Subsequent lookups hit the DB (with an in-memory LRU cache).
 
-Current version: `7.0.0-M1` targeting Apache Grails 7.0.11 (branch `7.x-upgrade`). The Grails 6.2.x version `6.0-M1` is on `master`.
+Current version: `7.0.0-M3` targeting Apache Grails 7.0.11 (branch `7.x-upgrade`). The Grails 6.2.x version `6.0-M1` is on `master`.
 
 ## Build & Test Commands
 
@@ -17,7 +17,7 @@ Requires Java 17 and Gradle 8+. If the system default JVM is not Java 17, set
 # Build the plugin jar
 ./gradlew assemble
 
-# Run tests (50 unit tests across 4 spec files)
+# Run tests (73 unit tests across 5 spec files)
 ./gradlew test
 
 # Run a single test class
@@ -41,7 +41,7 @@ The plugin is only active when `grails.plugin.localizations.enabled = true` is s
 |---|---|
 | `src/main/groovy/.../GrailsLocalizationsGrailsPlugin.groovy` | Plugin descriptor — Spring wiring, dynamic method injection (`message`, `errorMessage`) onto domain/service classes |
 | `grails-app/domain/.../Localization.groovy` | The domain class and the main logic hub: cache, `decodeMessage`, `load`/`reload`/`syncWithPropertyFiles`, `getMessage`, `setError` |
-| `src/main/groovy/.../LocalizationsPluginUtils.groovy` | Resolves `i18n` resource files from the app and all installed plugins |
+| `src/main/groovy/.../LocalizationsPluginUtils.groovy` | Resolves `i18n` resource files from the app and all installed plugins. In packaged deployments the app scan is scoped to the Application class's code source (drops dependency-jar bundles) and then filtered by filename globs (drops config files) |
 | `grails-app/controllers/.../LocalizationController.groovy` | CRUD UI + `cache` (stats/reset), `imports`, `jsonp` actions |
 | `grails-app/services/.../LocalizationService.groovy` | Thin service; currently only checks whether optional peer plugins (`settings`, `criteria`) are installed |
 
@@ -55,6 +55,8 @@ The cache lives as a static `LinkedHashMap` on the `Localization` domain class (
 ```groovy
 grails.plugin.localizations.enabled = true       // required to activate
 localizations.cache.size.kb = 1024               // optional, 0 disables cache
+grails.plugin.localizations.includes = ['messages*']  // optional filename globs to import
+grails.plugin.localizations.excludes = ['internal*']  // optional extra globs to skip (config files are excluded by default)
 grails.plugin.localizations.mapping = { ... }    // optional GORM column/index overrides
 ```
 
@@ -80,5 +82,5 @@ The `Localization.decodeMessage()` method was rewritten from HQL `findAll(...)` 
 HQL string queries.
 
 ### Test suite
-50 unit tests across 4 Spock spec files in `src/test/groovy/`. All tests pass on Grails 7.0.11.
+73 unit tests across 5 Spock spec files in `src/test/groovy/`. All tests pass on Grails 7.0.11.
 See `MIGRATION.md` for the full list of source changes and their rationale.
