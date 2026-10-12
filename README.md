@@ -14,7 +14,7 @@ A CRUD UI, import facility, cache management endpoint, and JSONP endpoint are in
 
 | Plugin version | Grails version | Java | Branch |
 |----------------|---------------|------|--------|
-| `7.0.0-M1` | Apache Grails 7.0.x | 17+ | `7.x-upgrade` |
+| `7.0.0-M3` | Apache Grails 7.0.x | 17+ | `7.x-upgrade` |
 | `6.0-M1` | Grails 6.2.x | 11+ | `master` |
 | `5.0-M1` | Grails 5.x | 11+ | — |
 | `4.0-M1` | Grails 4.x | 8+ | — |
@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    implementation "org.grails.plugins:grails-localizations:7.0.0-M1"
+    implementation "org.grails.plugins:grails-localizations:7.0.0-M3"
 }
 ```
 
@@ -50,7 +50,7 @@ dependencies {
 
 ```groovy
 dependencies {
-    implementation "org.grails.plugins:grails-localizations:7.0.0-M1"
+    implementation "org.grails.plugins:grails-localizations:7.0.0-M3"
 }
 ```
 
@@ -152,6 +152,20 @@ grails.plugin.localizations.enabled = true
 
 // Optional — override LRU cache size in KB (default 128 KB, 0 = disable cache)
 localizations.cache.size.kb = 1024
+
+// In a packaged (war / boot jar) deployment only *.properties files inside the application's
+// own classes directory (WEB-INF/classes or BOOT-INF/classes) are imported, as on 6.x. Bundles
+// shipped by dependency jars (e.g. json-schema-validator's jsv-messages.properties) are ignored.
+// Plugin bundles are still imported from each installed Grails plugin.
+
+// Optional — only import properties files whose name matches one of these globs.
+// Empty (default) imports every *.properties not excluded below.
+grails.plugin.localizations.includes = ['messages*', 'validation*']
+
+// Optional — extra filename globs to skip. Merged with the built-in excludes
+// (application*.properties, build-info.properties, git.properties, grails.build.info,
+// logback*/log4j*/spring*.properties), which keep config files out of the Localization table.
+grails.plugin.localizations.excludes = ['internal*']
 
 // Optional — override GORM column/index mapping
 grails.plugin.localizations.mapping = {

@@ -7,7 +7,7 @@ Grails 6.2.0 to Apache Grails 7.0.11. It is intended as a reference for:
 - Understanding *why* each change was necessary
 
 Branch: `7.x-upgrade`  
-Plugin version bump: `6.0-M1` → `7.0.0-M1`
+Plugin version bump: `6.0-M1` → `7.0.0-M3`
 
 ---
 
