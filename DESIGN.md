@@ -1,6 +1,6 @@
 # Design Document — grails-localizations Plugin
 
-**Version:** 7.0.0-M3  
+**Version:** 7.0.0-M4  
 **Target:** Apache Grails 7.0.11 / GORM 9 / Hibernate 5.6.x / Spring Boot 3.x  
 **Branch:** `7.x-upgrade`
 

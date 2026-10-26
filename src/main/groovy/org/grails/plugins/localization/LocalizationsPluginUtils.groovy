@@ -18,7 +18,7 @@ class LocalizationsPluginUtils {
     static final String GRAILS_APP_I18N_PATH_COMPONENT = "/grails-app/i18n/";
     static String messageBundleLocationPattern = "classpath*:*.properties";
 
-    /** Config key: list of filename globs to import (e.g. ['messages*']). Empty = import everything not excluded. */
+    /** Config key: filename globs to import even if a DEFAULT_EXCLUDES glob matches them (a rescue list). */
     static final String INCLUDES_CONFIG_KEY = 'grails.plugin.localizations.includes'
     /** Config key: list of filename globs to skip, merged with DEFAULT_EXCLUDES. */
     static final String EXCLUDES_CONFIG_KEY = 'grails.plugin.localizations.excludes'
@@ -35,7 +35,7 @@ class LocalizationsPluginUtils {
         'grails.build.info',
         'logback*.properties',
         'log4j*.properties',
-        'spring*.properties'
+        'spring.properties'
     ].asImmutable()
 
     @CompileStatic
@@ -115,34 +115,47 @@ class LocalizationsPluginUtils {
     /**
      * Keeps only resources whose filename looks like a message bundle according to the
      * configured include/exclude globs (see INCLUDES_CONFIG_KEY / EXCLUDES_CONFIG_KEY).
+     *
+     * Precedence, highest first: consumer excludes, consumer includes, DEFAULT_EXCLUDES.
+     * Includes are a rescue list on top of the defaults: everything not default-excluded is
+     * imported as usual, plus any default-excluded file that matches an include. A consumer
+     * exclude always wins.
      */
     @CompileStatic
     static List<Resource> filterMessageBundles(List<Resource> resources) {
         List<String> includes = configList(INCLUDES_CONFIG_KEY)
-        List<String> excludes = DEFAULT_EXCLUDES + configList(EXCLUDES_CONFIG_KEY)
+        List<String> userExcludes = configList(EXCLUDES_CONFIG_KEY)
+        log.debug "i18n filename filter - includes: ${includes}, excludes: ${userExcludes}, default excludes: ${DEFAULT_EXCLUDES}"
         List<Resource> kept = []
         resources.each { Resource r ->
-            if (isMessageBundle(r.filename, includes, excludes)) {
+            if (isMessageBundle(r.filename, includes, userExcludes, DEFAULT_EXCLUDES)) {
                 kept << r
             } else {
                 log.debug "Skipping non-i18n properties resource - " + r.filename
             }
         }
+        log.debug "i18n filename filter kept ${kept.size()} of ${resources.size()} resources: ${kept*.filename}"
         return kept
     }
 
+    /** Convenience overload: consumer excludes only, defaults applied. */
     @CompileStatic
-    static boolean isMessageBundle(String filename, List<String> includes, List<String> excludes) {
+    static boolean isMessageBundle(String filename, List<String> includes, List<String> userExcludes) {
+        return isMessageBundle(filename, includes, userExcludes, DEFAULT_EXCLUDES)
+    }
+
+    @CompileStatic
+    static boolean isMessageBundle(String filename, List<String> includes, List<String> userExcludes, List<String> defaultExcludes) {
         if (!filename || !filename.endsWith('.properties')) {
             return false
         }
-        if (excludes.any { String glob -> globMatches(glob, filename) }) {
+        if (userExcludes.any { String glob -> globMatches(glob, filename) }) {
             return false
         }
-        if (includes) {
-            return includes.any { String glob -> globMatches(glob, filename) }
+        if (includes.any { String glob -> globMatches(glob, filename) }) {
+            return true
         }
-        return true
+        return !defaultExcludes.any { String glob -> globMatches(glob, filename) }
     }
 
     @CompileStatic

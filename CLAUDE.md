@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Grails plugin that replaces Grails' default file-based i18n (`.properties` files) with database-backed internationalization. On first message request after install, all `i18n/*.properties` files are loaded into the `Localization` table. Subsequent lookups hit the DB (with an in-memory LRU cache).
 
-Current version: `7.0.0-M3` targeting Apache Grails 7.0.11 (branch `7.x-upgrade`). The Grails 6.2.x version `6.0-M1` is on `master`.
+Current version: `7.0.0-M4` targeting Apache Grails 7.0.11 (branch `7.x-upgrade`). The Grails 6.2.x version `6.0-M1` is on `master`.
 
 ## Build & Test Commands
 
@@ -17,7 +17,7 @@ Requires Java 17 and Gradle 8+. If the system default JVM is not Java 17, set
 # Build the plugin jar
 ./gradlew assemble
 
-# Run tests (73 unit tests across 5 spec files)
+# Run tests (77 unit tests across 5 spec files)
 ./gradlew test
 
 # Run a single test class
@@ -55,7 +55,7 @@ The cache lives as a static `LinkedHashMap` on the `Localization` domain class (
 ```groovy
 grails.plugin.localizations.enabled = true       // required to activate
 localizations.cache.size.kb = 1024               // optional, 0 disables cache
-grails.plugin.localizations.includes = ['messages*']  // optional filename globs to import
+grails.plugin.localizations.includes = ['spring*']    // optional rescue globs: import even if a default exclude matches
 grails.plugin.localizations.excludes = ['internal*']  // optional extra globs to skip (config files are excluded by default)
 grails.plugin.localizations.mapping = { ... }    // optional GORM column/index overrides
 ```
@@ -82,5 +82,5 @@ The `Localization.decodeMessage()` method was rewritten from HQL `findAll(...)` 
 HQL string queries.
 
 ### Test suite
-73 unit tests across 5 Spock spec files in `src/test/groovy/`. All tests pass on Grails 7.0.11.
+77 unit tests across 5 Spock spec files in `src/test/groovy/`. All tests pass on Grails 7.0.11.
 See `MIGRATION.md` for the full list of source changes and their rationale.
