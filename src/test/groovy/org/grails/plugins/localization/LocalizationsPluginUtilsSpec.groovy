@@ -24,7 +24,7 @@ class LocalizationsPluginUtilsSpec extends Specification {
     @Unroll
     void "default excludes drop config file #name"() {
         expect:
-        !LocalizationsPluginUtils.isMessageBundle(name, [], LocalizationsPluginUtils.DEFAULT_EXCLUDES)
+        !LocalizationsPluginUtils.isMessageBundle(name, [], [])
 
         where:
         name << ['application.properties', 'application-prod.properties', 'build-info.properties',
@@ -34,22 +34,38 @@ class LocalizationsPluginUtilsSpec extends Specification {
     @Unroll
     void "default excludes keep message bundle #name"() {
         expect:
-        LocalizationsPluginUtils.isMessageBundle(name, [], LocalizationsPluginUtils.DEFAULT_EXCLUDES)
+        LocalizationsPluginUtils.isMessageBundle(name, [], [])
 
         where:
         name << ['messages.properties', 'messages_fr.properties', 'messages_en_US.properties',
-                 'localizations.properties', 'validation_de.properties']
+                 'localizations.properties', 'validation_de.properties',
+                 // Grails Spring Security Core plugin bundle: must not be caught by the spring.properties exclude
+                 'spring-security-core.properties', 'spring-security-core_fr.properties']
     }
 
-    void "includes restrict to matching basenames"() {
+    void "includes do not restrict bundles that are imported by default"() {
         expect:
         LocalizationsPluginUtils.isMessageBundle('messages_fr.properties', ['messages*'], [])
-        !LocalizationsPluginUtils.isMessageBundle('validation.properties', ['messages*'], [])
+        LocalizationsPluginUtils.isMessageBundle('validation.properties', ['messages*'], [])
     }
 
     void "custom excludes are honoured"() {
         expect:
         !LocalizationsPluginUtils.isMessageBundle('internal_en.properties', [], ['internal*'])
+    }
+
+    void "includes rescue files a default exclude would drop"() {
+        expect: 'a file a default exclude would drop is kept when the consumer included it'
+        LocalizationsPluginUtils.isMessageBundle('spring.properties', ['spring*'], [])
+        LocalizationsPluginUtils.isMessageBundle('application.properties', ['application*'], [])
+
+        and: 'other default-excluded files stay excluded'
+        !LocalizationsPluginUtils.isMessageBundle('git.properties', ['spring*'], [])
+    }
+
+    void "consumer excludes win over includes"() {
+        expect:
+        !LocalizationsPluginUtils.isMessageBundle('spring-security-core.properties', ['spring*'], ['spring-security*'])
     }
 
     void "filterMessageBundles removes config resources from a classpath scan"() {

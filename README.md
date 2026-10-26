@@ -14,7 +14,7 @@ A CRUD UI, import facility, cache management endpoint, and JSONP endpoint are in
 
 | Plugin version | Grails version | Java | Branch |
 |----------------|---------------|------|--------|
-| `7.0.0-M3` | Apache Grails 7.0.x | 17+ | `7.x-upgrade` |
+| `7.0.0-M4` | Apache Grails 7.0.x | 17+ | `7.x-upgrade` |
 | `6.0-M1` | Grails 6.2.x | 11+ | `master` |
 | `5.0-M1` | Grails 5.x | 11+ | — |
 | `4.0-M1` | Grails 4.x | 8+ | — |
@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    implementation "org.grails.plugins:grails-localizations:7.0.0-M3"
+    implementation "org.grails.plugins:grails-localizations:7.0.0-M4"
 }
 ```
 
@@ -50,7 +50,7 @@ dependencies {
 
 ```groovy
 dependencies {
-    implementation "org.grails.plugins:grails-localizations:7.0.0-M3"
+    implementation "org.grails.plugins:grails-localizations:7.0.0-M4"
 }
 ```
 
@@ -158,14 +158,18 @@ localizations.cache.size.kb = 1024
 // shipped by dependency jars (e.g. json-schema-validator's jsv-messages.properties) are ignored.
 // Plugin bundles are still imported from each installed Grails plugin.
 
-// Optional — only import properties files whose name matches one of these globs.
-// Empty (default) imports every *.properties not excluded below.
-grails.plugin.localizations.includes = ['messages*', 'validation*']
+// Optional — rescue list: properties files matching these globs are imported even if a
+// built-in exclude below matches them. It never narrows the default set, so
+// includes = ['spring*'] adds spring.properties without affecting messages*.properties.
+grails.plugin.localizations.includes = ['spring*']
 
 // Optional — extra filename globs to skip. Merged with the built-in excludes
-// (application*.properties, build-info.properties, git.properties, grails.build.info,
-// logback*/log4j*/spring*.properties), which keep config files out of the Localization table.
+// (application*.properties, build-info.properties, git.properties, grails.build.info, spring.properties,
+// logback*/log4j*.properties), which keep config files out of the Localization table.
 grails.plugin.localizations.excludes = ['internal*']
+// Precedence: excludes > includes > built-in excludes. Enable DEBUG logging for
+// org.grails.plugins.localization.LocalizationsPluginUtils to see the effective lists
+// and which files were kept or skipped.
 
 // Optional — override GORM column/index mapping
 grails.plugin.localizations.mapping = {
